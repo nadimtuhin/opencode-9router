@@ -1,0 +1,36 @@
+{
+  "name": "opencode-9router",
+  "version": "1.0.0",
+  "description": "Unified 9Router provider and model discovery plugin for OpenCode",
+  "license": "MIT",
+  "author": "Nadim Tuhin <nadimtuhin@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nadimtuhin/opencode-9router.git"
+  },
+  "homepage": "https://github.com/nadimtuhin/opencode-9router#readme",
+  "bugs": {
+    "url": "https://github.com/nadimtuhin/opencode-9router/issues"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "9router",
+    "ai-gateway",
+    "llm-router"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.6.0"
+  }
+}
