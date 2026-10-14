@@ -6,12 +6,9 @@ import { OpenCodeModelConfig } from "./types";
 
 const DEFAULT_CACHE_DIR = join(homedir(), ".cache", "opencode-9router");
 
-export function getCachePath(baseURL: string, customCacheDir?: string): string {
+export function getCachePath(baseURL: string, customCacheDir?: string, apiKey = ""): string {
   const dir = customCacheDir || DEFAULT_CACHE_DIR;
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  const hash = createHash("sha256").update(baseURL).digest("hex").slice(0, 16);
+  const hash = createHash("sha256").update(`${baseURL}\n${apiKey}`).digest("hex").slice(0, 16);
   return join(dir, `models-${hash}.json`);
 }
 

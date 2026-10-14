@@ -129,4 +129,57 @@ describe("discovery", () => {
     });
     expect(Object.keys(noFallback).length).toBe(0);
   });
+
+  it("logs one warning line when falling back to stale cache or empty list", async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return Response.json({ data: [{ id: "warn-model" }] });
+      }
+    });
+    const opts = {
+      baseURL: `http://127.0.0.1:${server.port}/v1`,
+      cacheTTL: 50,
+      cacheDir: testCacheDir
+    };
+    await discoverModels(opts);
+    server.stop(true);
+    await Bun.sleep(60);
+
+    const warnings: string[] = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(" "));
+    try {
+      await discoverModels(opts);
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toContain("stale cache");
+
+      warnings.length = 0;
+      await discoverModels({ ...opts, staleFallback: false });
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toContain("empty");
+    } finally {
+      console.warn = original;
+    }
+  });
+
+  it("does not share cache between different API keys", async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const auth = req.headers.get("authorization");
+        return Response.json({ data: [{ id: `model-for-${auth}` }] });
+      }
+    });
+    try {
+      const opts = { baseURL: `http://127.0.0.1:${server.port}/v1`, cacheDir: testCacheDir };
+      const a = await discoverModels({ ...opts, apiKey: "key-a" });
+      const b = await discoverModels({ ...opts, apiKey: "key-b" });
+      expect(a["model-for-Bearer key-a"]).toBeDefined();
+      expect(b["model-for-Bearer key-b"]).toBeDefined();
+      expect(b["model-for-Bearer key-a"]).toBeUndefined();
+    } finally {
+      server.stop(true);
+    }
+  });
 });
