@@ -34,8 +34,8 @@ export function nineRouterPlugin(_ctx?: unknown) {
             const discovered = await discoverModels(opts);
             if (Object.keys(discovered).length > 0) {
               prov.models = {
-                ...(prov.models || {}),
-                ...discovered
+                ...discovered,
+                ...(prov.models || {})
               };
             }
           } catch {
