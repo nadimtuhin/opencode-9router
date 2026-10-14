@@ -2,6 +2,8 @@ import { RawModelItem, OpenCodeModelConfig } from "./types";
 
 export function enrichModel(m: RawModelItem): OpenCodeModelConfig {
   const idLower = (m.id || "").toLowerCase();
+  const idTokens = new Set(idLower.split(/[-_/:.]/));
+  const hasToken = (token: string) => idTokens.has(token);
   const caps = m.capabilities || {};
 
   // 1. Context limit: prioritize explicit 9Router capability -> API field -> heuristics -> default 128000
@@ -11,7 +13,7 @@ export function enrichModel(m: RawModelItem): OpenCodeModelConfig {
       context = 1000000;
     } else if (idLower.includes("claude")) {
       context = 200000;
-    } else if (idLower.includes("gpt-4") || idLower.includes("o1") || idLower.includes("o3")) {
+    } else if (idLower.includes("gpt-4") || hasToken("o1") || hasToken("o3")) {
       context = 128000;
     } else if (idLower.includes("deepseek") || idLower.includes("qwen")) {
       context = 131072;
@@ -31,7 +33,7 @@ export function enrichModel(m: RawModelItem): OpenCodeModelConfig {
       output = 64000;
     } else if (idLower.includes("gpt-4o")) {
       output = 16384;
-    } else if (idLower.includes("o1") || idLower.includes("o3")) {
+    } else if (hasToken("o1") || hasToken("o3")) {
       output = 32768;
     } else if (m.owned_by === "combo" || idLower.includes("combo")) {
       output = 16384;
@@ -52,15 +54,15 @@ export function enrichModel(m: RawModelItem): OpenCodeModelConfig {
     idLower.includes("claude-3") ||
     idLower.includes("claude-4") ||
     idLower.includes("gemini") ||
-    idLower.includes("vl") ||
+    hasToken("vl") ||
     m.owned_by === "combo"
   );
 
   // 5. Reasoning support
   const reasoning = caps.reasoning ?? caps.thinking ?? (
-    idLower.includes("o1") ||
-    idLower.includes("o3") ||
-    idLower.includes("r1") ||
+    hasToken("o1") ||
+    hasToken("o3") ||
+    hasToken("r1") ||
     idLower.includes("reason") ||
     idLower.includes("thinking") ||
     idLower.includes("deepseek-r1") ||

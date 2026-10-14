@@ -25,6 +25,15 @@ describe("cache", () => {
     expect(existsSync(testDir)).toBe(true);
   });
 
+  it("has no filesystem side effect and keys on API key without leaking it", () => {
+    const missing = join(testDir, "not-created");
+    const a = getCachePath("http://h/v1", missing, "secret-a");
+    const b = getCachePath("http://h/v1", missing, "secret-b");
+    expect(existsSync(missing)).toBe(false);
+    expect(a).not.toBe(b);
+    expect(a).not.toContain("secret-a");
+  });
+
   it("writes and reads valid cache within TTL", () => {
     const filePath = join(testDir, "test-models.json");
     const sampleModels: Record<string, OpenCodeModelConfig> = {

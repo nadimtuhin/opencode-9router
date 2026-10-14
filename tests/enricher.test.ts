@@ -84,4 +84,14 @@ describe("enricher", () => {
     expect(enriched.limit.context).toBe(4096);
     expect(enriched.limit.output).toBe(1024);
   });
+
+  it("matches o1/o3/r1/vl on token boundaries only", () => {
+    expect(enrichModel({ id: "foo-pro1-bar" }).reasoning).toBe(false);
+    expect(enrichModel({ id: "llama-3-vlad" }).vision).toBe(false);
+    expect(enrichModel({ id: "x/gpt-o3x" }).limit.output).toBe(8192);
+    expect(enrichModel({ id: "openai/o1-mini" }).reasoning).toBe(true);
+    expect(enrichModel({ id: "openai/o3" }).limit.output).toBe(32768);
+    expect(enrichModel({ id: "qwen2.5-vl-72b" }).vision).toBe(true);
+    expect(enrichModel({ id: "deepseek/r1" }).reasoning).toBe(true);
+  });
 });

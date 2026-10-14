@@ -142,4 +142,34 @@ describe("plugin lifecycle", () => {
       server.stop();
     }
   });
+
+  it("lets user-configured models win over discovered ones with the same id", async () => {
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return Response.json({ data: [{ id: "m1", name: "Discovered" }] });
+      }
+    });
+
+    try {
+      const config: any = {
+        provider: {
+          "9router": {
+            options: {
+              baseURL: `http://127.0.0.1:${server.port}/v1`,
+              cacheDir: testCacheDir,
+              cache: false
+            },
+            models: { m1: { id: "m1", name: "Mine" } }
+          }
+        }
+      };
+
+      await nineRouterPlugin().config(config);
+
+      expect(config.provider["9router"].models.m1.name).toBe("Mine");
+    } finally {
+      server.stop();
+    }
+  });
 });
