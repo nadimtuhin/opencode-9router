@@ -182,4 +182,52 @@ describe("discovery", () => {
       server.stop(true);
     }
   });
+
+  it("redacts credentials embedded in baseURL from warning output", async () => {
+    const warnings: string[] = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args.join(" "));
+    try {
+      await discoverModels({
+        baseURL: "http://user:url-secret@127.0.0.1:1/v1?api_key=query-secret",
+        cache: false,
+        staleFallback: false,
+        discoveryTimeout: 2000
+      });
+    } finally {
+      console.warn = original;
+    }
+    expect(warnings.length).toBe(1);
+    expect(warnings[0]).not.toContain("url-secret");
+    expect(warnings[0]).not.toContain("query-secret");
+    expect(warnings[0]).toContain("127.0.0.1:1");
+  });
+
+  it("falls back to stale cache when a 200 response carries no models", async () => {
+    let mode: "ok" | "empty" = "ok";
+    const server = Bun.serve({
+      port: 0,
+      fetch() {
+        return mode === "ok"
+          ? Response.json({ data: [{ id: "kept-model" }] })
+          : Response.json({ error: { message: "upstream unavailable" } });
+      }
+    });
+    const original = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args.join(" "));
+    try {
+      const opts = { baseURL: `http://127.0.0.1:${server.port}/v1`, cacheTTL: 50, cacheDir: testCacheDir };
+      await discoverModels(opts);
+      await Bun.sleep(60);
+      mode = "empty";
+      const result = await discoverModels(opts);
+      expect(result["kept-model"]).toBeDefined();
+      expect(warnings.length).toBe(1);
+      expect(warnings[0]).toContain("stale cache");
+    } finally {
+      console.warn = original;
+      server.stop(true);
+    }
+  });
 });
