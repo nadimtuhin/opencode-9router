@@ -94,4 +94,15 @@ describe("enricher", () => {
     expect(enrichModel({ id: "qwen2.5-vl-72b" }).vision).toBe(true);
     expect(enrichModel({ id: "deepseek/r1" }).reasoning).toBe(true);
   });
+
+  it("declares image input via modalities for vision models so opencode accepts images", () => {
+    const vision = enrichModel({ id: "openai/gpt-4o" });
+    expect(vision.modalities).toEqual({ input: ["text", "image"], output: ["text"] });
+
+    const textOnly = enrichModel({ id: "deepseek/deepseek-r1" });
+    expect(textOnly.modalities).toEqual({ input: ["text"], output: ["text"] });
+
+    const pdf = enrichModel({ id: "x/model", capabilities: { vision: true, pdf: true } });
+    expect(pdf.modalities).toEqual({ input: ["text", "image", "pdf"], output: ["text"] });
+  });
 });

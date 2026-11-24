@@ -69,6 +69,11 @@ export function enrichModel(m: RawModelItem): OpenCodeModelConfig {
     idLower.includes("qwq")
   );
 
+  // opencode reads image/pdf input support from `modalities`, not `vision`.
+  const input = ["text"];
+  if (vision) input.push("image");
+  if (caps.pdf) input.push("pdf");
+
   return {
     id: m.id,
     name: m.name || m.id,
@@ -81,6 +86,7 @@ export function enrichModel(m: RawModelItem): OpenCodeModelConfig {
     vision,
     attachment: vision,
     reasoning,
-    temperature: caps.temperature ?? !reasoning
+    temperature: caps.temperature ?? !reasoning,
+    modalities: { input, output: ["text"] }
   };
 }
