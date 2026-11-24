@@ -51,5 +51,9 @@ export interface OpenCodeModelConfig {
   attachment?: boolean;
   reasoning?: boolean;
   temperature?: boolean;
+  modalities?: {
+    input: string[];
+    output: string[];
+  };
   [key: string]: unknown;
 }

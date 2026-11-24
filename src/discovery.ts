@@ -13,6 +13,21 @@ export function normalizeModelsUrl(baseURL?: string): string {
   return `${base}/v1/models`;
 }
 
+/** Strip userinfo and query string so credentials embedded in a URL are never logged. */
+export function redactUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.username || u.password) {
+      u.username = "***";
+      u.password = "";
+    }
+    if (u.search) u.search = "?***";
+    return u.toString();
+  } catch {
+    return "<invalid url>";
+  }
+}
+
 export async function discoverModels(options: NineRouterOptions = {}): Promise<Record<string, OpenCodeModelConfig>> {
   const modelsUrl = normalizeModelsUrl(options.baseURL);
   const ttl = options.cacheTTL ?? 3 * 60 * 60 * 1000; // 3 hours
@@ -66,21 +81,27 @@ export async function discoverModels(options: NineRouterOptions = {}): Promise<R
       models[m.id] = enrichModel(m);
     }
 
-    if (options.cache !== false && Object.keys(models).length > 0) {
+    if (Object.keys(models).length === 0) {
+      throw new Error("response contained no models");
+    }
+
+    if (options.cache !== false) {
       writeCache(cachePath, models);
     }
 
     return models;
   } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
+    const rawReason = err instanceof Error ? err.message : String(err);
+    const reason = rawReason.split(modelsUrl).join(redactUrl(modelsUrl));
+    const logUrl = redactUrl(modelsUrl);
     if (options.staleFallback !== false) {
       const stale = readStaleCache(cachePath);
       if (stale && Object.keys(stale).length > 0) {
-        console.warn(`[opencode-9router] discovery from ${modelsUrl} failed (${reason}); using stale cache`);
+        console.warn(`[opencode-9router] discovery from ${logUrl} failed (${reason}); using stale cache`);
         return stale;
       }
     }
-    console.warn(`[opencode-9router] discovery from ${modelsUrl} failed (${reason}); returning empty model list`);
+    console.warn(`[opencode-9router] discovery from ${logUrl} failed (${reason}); returning empty model list`);
     return {};
   } finally {
     clearTimeout(timer);

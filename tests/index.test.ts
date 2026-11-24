@@ -172,4 +172,69 @@ describe("plugin lifecycle", () => {
       server.stop();
     }
   });
+
+  it("wires NINEROUTER_API_KEY into the provider via env so chat requests are authenticated", async () => {
+    const server = Bun.serve({ port: 0, fetch: () => Response.json({ data: [{ id: "m" }] }) });
+    const prev = process.env.NINEROUTER_API_KEY;
+    process.env.NINEROUTER_API_KEY = "env-secret-value";
+    try {
+      const config: any = {
+        provider: {
+          "9router": { options: { baseURL: `http://127.0.0.1:${server.port}/v1`, cache: false } },
+          "9router-custom": {
+            env: ["MY_ROUTER_KEY"],
+            options: { baseURL: `http://127.0.0.1:${server.port}/v1`, cache: false }
+          }
+        }
+      };
+      await nineRouterPlugin().config(config);
+      expect(config.provider["9router"].env).toEqual(["NINEROUTER_API_KEY"]);
+      // A user-declared env is left untouched: opencode only forwards an env key
+      // when `env` has exactly one entry, so appending would drop the user's key.
+      expect(config.provider["9router-custom"].env).toEqual(["MY_ROUTER_KEY"]);
+      // The secret itself must not be copied into the config object.
+      expect(JSON.stringify(config)).not.toContain("env-secret-value");
+    } finally {
+      if (prev === undefined) delete process.env.NINEROUTER_API_KEY;
+      else process.env.NINEROUTER_API_KEY = prev;
+      server.stop(true);
+    }
+  });
+
+  it("never changes a user-declared env list (opencode needs exactly one entry to pass the key)", async () => {
+    const origWarn = console.warn;
+    console.warn = () => {};
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () => { throw new Error("offline"); }) as any;
+    const config: any = {
+      provider: {
+        "9router-a": { env: ["A_KEY"], options: { cache: false } },
+        "9router-b": { env: ["A_KEY", "B_KEY"], options: { cache: false } }
+      }
+    };
+    try {
+      await nineRouterPlugin().config(config);
+    } finally {
+      globalThis.fetch = origFetch;
+      console.warn = origWarn;
+    }
+    expect(config.provider["9router-a"].env).toEqual(["A_KEY"]);
+    expect(config.provider["9router-b"].env).toEqual(["A_KEY", "B_KEY"]);
+  });
+
+  it("sets env on the auto-registered default provider", async () => {
+    const config: any = { provider: {} };
+    // Point discovery at a closed port so the test is fast and offline.
+    const origWarn = console.warn;
+    console.warn = () => {};
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () => { throw new Error("offline"); }) as any;
+    try {
+      await nineRouterPlugin().config(config);
+    } finally {
+      globalThis.fetch = origFetch;
+      console.warn = origWarn;
+    }
+    expect(config.provider["9router"].env).toEqual(["NINEROUTER_API_KEY"]);
+  });
 });
