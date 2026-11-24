@@ -189,7 +189,8 @@ describe("plugin lifecycle", () => {
       };
       await nineRouterPlugin().config(config);
       expect(config.provider["9router"].env).toEqual(["NINEROUTER_API_KEY"]);
-      expect(config.provider["9router-custom"].env).toEqual(["MY_ROUTER_KEY"]);
+      // Provider-specific env is kept, and NINEROUTER_API_KEY is still added.
+      expect(config.provider["9router-custom"].env).toEqual(["MY_ROUTER_KEY", "NINEROUTER_API_KEY"]);
       // The secret itself must not be copied into the config object.
       expect(JSON.stringify(config)).not.toContain("env-secret-value");
     } finally {
@@ -197,6 +198,27 @@ describe("plugin lifecycle", () => {
       else process.env.NINEROUTER_API_KEY = prev;
       server.stop(true);
     }
+  });
+
+  it("adds NINEROUTER_API_KEY to every provider with a non-empty env, without duplicates", async () => {
+    const origWarn = console.warn;
+    console.warn = () => {};
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = (async () => { throw new Error("offline"); }) as any;
+    const config: any = {
+      provider: {
+        "9router-a": { env: ["A_KEY", "B_KEY"], options: { cache: false } },
+        "9router-b": { env: ["NINEROUTER_API_KEY", "C_KEY"], options: { cache: false } }
+      }
+    };
+    try {
+      await nineRouterPlugin().config(config);
+    } finally {
+      globalThis.fetch = origFetch;
+      console.warn = origWarn;
+    }
+    expect(config.provider["9router-a"].env).toEqual(["A_KEY", "B_KEY", "NINEROUTER_API_KEY"]);
+    expect(config.provider["9router-b"].env).toEqual(["NINEROUTER_API_KEY", "C_KEY"]);
   });
 
   it("sets env on the auto-registered default provider", async () => {

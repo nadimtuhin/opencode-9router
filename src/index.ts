@@ -29,9 +29,10 @@ export function nineRouterPlugin(_ctx?: unknown) {
             // opencode only forwards an env-var key to the provider SDK when it is
             // listed in `env`; without this, discovery is authenticated but chat
             // requests are not. Listing the name keeps the secret out of config.
-            if (!Array.isArray(prov.env) || prov.env.length === 0) {
-              prov.env = ["NINEROUTER_API_KEY"];
-            }
+            // Append to any provider-specific env rather than replacing it.
+            const env: string[] = Array.isArray(prov.env) ? [...prov.env] : [];
+            if (!env.includes("NINEROUTER_API_KEY")) env.push("NINEROUTER_API_KEY");
+            prov.env = env;
 
             const opts = { ...(prov.options || {}) };
             if (!opts.apiKey && process.env.NINEROUTER_API_KEY) {
